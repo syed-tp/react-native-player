@@ -14,8 +14,7 @@
     "react-native": "0.77.1",
     "react-native-fs": "^2.20.0",
     "react-native-video": "^6.10.1",
-    "react-native-video-player": "^0.16.2",
-    "react-native-video-processing": "^1.7.2"
+    "react-native-video-player": "^0.16.2"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
