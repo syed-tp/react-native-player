@@ -1,0 +1,57 @@
+name: Label PR review outcome
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  update-labels:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Update label based on review state
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const reviewState = context.payload.review.state.toLowerCase();
+            const prNumber = context.payload.pull_request.number;
+            const repoOwner = context.repo.owner;
+            const repoName = context.repo.repo;
+
+            let addLabel = null;
+            let removeLabels = [];
+
+            if (reviewState === 'approved') {
+              addLabel = 'approved';
+              removeLabels = ['changes-requested', 'needs-review'];
+            } else if (reviewState === 'changes_requested') {
+              addLabel = 'changes-requested';
+              removeLabels = ['approved', 'needs-review'];
+            } else {
+              return;
+            }
+
+            // Remove old labels
+            for (const label of removeLabels) {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: repoOwner,
+                  repo: repoName,
+                  issue_number: prNumber,
+                  name: label,
+                });
+              } catch (error) {
+                if (error.status !== 404) throw error; // Ignore if label doesn't exist
+              }
+            }
+
+            // Add the new label
+            await github.rest.issues.addLabels({
+              owner: repoOwner,
+              repo: repoName,
+              issue_number: prNumber,
+              labels: [addLabel],
+            });

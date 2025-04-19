@@ -13,6 +13,7 @@ reviews:
   auto_apply_labels: true #Automatically apply the suggested labels to the PR/MR.
   auto_review:
     enabled: true
+    auto_incremental_review: false #Automatic Incremental Review | Automatic incremental code review on each push
     drafts: false
 chat:
   auto_reply: true
