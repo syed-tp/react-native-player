@@ -1,15 +1,48 @@
 name: Label PR review outcome
 
 on:
+  pull_request:
+    types: [opened, synchronize, reopened]
   pull_request_review:
     types: [submitted]
 
 jobs:
+  add-needs-review-label:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Add 'needs-review' label if not already added
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const repoOwner = context.repo.owner;
+            const repoName = context.repo.repo;
+
+            // Add 'needs-review' label if it's not already added
+            const labels = await github.rest.issues.listLabelsOnIssue({
+              owner: repoOwner,
+              repo: repoName,
+              issue_number: prNumber,
+            });
+
+            const labelNames = labels.data.map(label => label.name);
+            if (!labelNames.includes('needs-review')) {
+              await github.rest.issues.addLabels({
+                owner: repoOwner,
+                repo: repoName,
+                issue_number: prNumber,
+                labels: ['needs-review'],
+              });
+            }
+
+  # Update labels based on review state
   update-labels:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
-
     steps:
       - name: Update label based on review state
         uses: actions/github-script@v7
