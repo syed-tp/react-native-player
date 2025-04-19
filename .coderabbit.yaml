@@ -2,12 +2,15 @@
 language: "en-US"
 early_access: false
 reviews:
-  profile: "chill"
-  request_changes_workflow: true
-  high_level_summary: true
-  poem: true
-  review_status: false
-  collapse_walkthrough: false
+  profile: "chill" # ('chill', 'assertive') Set the profile for reviews. Assertive profile yields more feedback, that may be considered nitpicky.
+  request_changes_workflow: true #Approve the review once CodeRabbit's comments are resolved. Note: In GitLab, all discussions must be resolved.
+  high_level_summary: true #Generate a high level summary of the changes in the PR/MR description.
+  poem: false #Generate a poem in the walkthrough comment
+  review_status: false #Post review details on each review. Additionally, post a review status when a review is skipped in certain cases.
+  collapse_walkthrough: false #Generate walkthrough in a markdown collapsible section.
+  changed_files_summary: true #Generate a summary of the changed files in the walkthrough.
+  sequence_diagrams: true #Generate sequence diagrams in the walkthrough.
+  auto_apply_labels: true #Automatically apply the suggested labels to the PR/MR.
   auto_review:
     enabled: true
     drafts: false
