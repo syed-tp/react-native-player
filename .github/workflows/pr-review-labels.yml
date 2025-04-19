@@ -21,7 +21,6 @@ jobs:
             const repoOwner = context.repo.owner;
             const repoName = context.repo.repo;
 
-            // Define label logic based on the review state
             const labelsToApply = {
               approved: { add: 'approved', remove: ['changes-requested', 'needs-review'] },
               changes_requested: { add: 'changes-requested', remove: ['approved', 'needs-review'] },
@@ -33,26 +32,30 @@ jobs:
             const labelAction = labelsToApply[reviewState];
             if (!labelAction) return;
 
-            for (const label of labelAction.remove) {
-              if (label) {
-                try {
-                  await github.rest.issues.removeLabel({
-                    owner: repoOwner,
-                    repo: repoName,
-                    issue_number: prNumber,
-                    name: label,
-                  });
-                } catch (error) {
-                  if (error.status !== 404) throw error;
-                }
-              }
+            const currentLabels = await github.rest.issues.listLabelsOnIssue({
+              owner: repoOwner,
+              repo: repoName,
+              issue_number: prNumber
+            });
+
+            const currentLabelNames = currentLabels.data.map(label => label.name);
+
+            const labelsToRemove = labelAction.remove.filter(label => currentLabelNames.includes(label));
+
+            for (const label of labelsToRemove) {
+              await github.rest.issues.removeLabel({
+                owner: repoOwner,
+                repo: repoName,
+                issue_number: prNumber,
+                name: label
+              });
             }
 
-            if (labelAction.add) {
+            if (labelAction.add && !currentLabelNames.includes(labelAction.add)) {
               await github.rest.issues.addLabels({
                 owner: repoOwner,
                 repo: repoName,
                 issue_number: prNumber,
-                labels: [labelAction.add],
+                labels: [labelAction.add]
               });
             }
