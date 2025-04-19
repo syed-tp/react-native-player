@@ -43,6 +43,7 @@ function App(): React.JSX.Element {
 
   return (
       <View style={styles.container}>
+        <Text> Video player</Text>
         <VideoPlayer
           ref={playerRef}
           endWithThumbnail
