@@ -7,37 +7,19 @@ on:
 jobs:
   trigger-review:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write  # This grants the token permission to comment on PRs
 
     steps:
-      - name: Log PR details
-        run: |
-          echo "Pull request number: ${{ github.event.pull_request.number }}"
-          echo "Repository owner: ${{ github.repository_owner }}"
-          echo "Repository name: ${{ github.event.repository.name }}"
-
       - name: Comment "@coderabbitai review" on PR
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.BOT_GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            // Log context details
-            console.log("Context Payload:", JSON.stringify(context.payload, null, 2));
-
-            // Get PR details
             const pr = context.payload.pull_request;
-            console.log("PR Number:", pr.number);
-
-            // Create a comment on the PR
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: pr.number,
               body: "@coderabbitai review"
             });
-
-      - name: Check for PR comment response
-        run: |
-          echo "Checking if the comment was posted successfully."
-          curl -H "Authorization: token ${{ secrets.BOT_GITHUB_TOKEN }}" \
-               -H "Accept: application/vnd.github.v3+json" \
-               https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments
