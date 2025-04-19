@@ -16,40 +16,47 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const { review, pull_request: pr } = context.payload;
-            const state = review.state.toLowerCase();
-            const { owner, repo } = context.repo;
-            const issue_number = pr.number;
+            const reviewState = context.payload.review.state.toLowerCase();
+            const pr = context.payload.pull_request;
+            const repo = context.repo;
 
             const labelMap = {
-              approved: 'approved',
-              changes_requested: 'changes-requested',
-              commented: 'needs-review',
-              pending: 'needs-review',
-              dismissed: null
+              approved: { add: 'approved', remove: ['changes-requested', 'needs-review'] },
+              changes_requested: { add: 'changes-requested', remove: ['approved', 'needs-review'] },
+              commented: { add: 'needs-review', remove: ['approved', 'changes-requested'] },
+              pending: { add: 'needs-review', remove: ['approved', 'changes-requested'] },
+              dismissed: { add: null, remove: ['approved', 'changes-requested', 'needs-review'] }
             };
 
-            const newLabel = labelMap[state];
-            const allLabels = ['approved', 'changes-requested', 'needs-review'];
+            const action = labelMap[reviewState];
+            if (!action) return;
 
-            const existing = await github.rest.issues.listLabelsOnIssue({
-              owner,
-              repo,
-              issue_number
+            const { data: currentLabels } = await github.rest.issues.listLabelsOnIssue({
+              owner: repo.owner,
+              repo: repo.repo,
+              issue_number: pr.number
             });
 
-            const currentLabels = existing.data.map(l => l.name);
+            const current = currentLabels.map(l => l.name);
 
-            const toRemove = allLabels.filter(label => currentLabels.includes(label));
-            for (const label of toRemove) {
-              await github.rest.issues.removeLabel({ owner, repo, issue_number, name: label });
+            // Remove labels that are present and need removal
+            for (const label of action.remove) {
+              if (current.includes(label)) {
+                await github.rest.issues.removeLabel({
+                  owner: repo.owner,
+                  repo: repo.repo,
+                  issue_number: pr.number,
+                  name: label
+                });
+              }
             }
 
-            if (newLabel && !currentLabels.includes(newLabel)) {
+            // Add new label only if it's not already there
+            if (action.add && !current.includes(action.add)) {
               await github.rest.issues.addLabels({
-                owner,
-                repo,
-                issue_number,
-                labels: [newLabel]
+                owner: repo.owner,
+                repo: repo.repo,
+                issue_number: pr.number,
+                labels: [action.add]
               });
             }
