@@ -1,48 +1,15 @@
 name: Label PR review outcome
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
   pull_request_review:
     types: [submitted]
 
 jobs:
-  add-needs-review-label:
-    runs-on: ubuntu-latest
-    permissions:
-      issues: write
-    steps:
-      - name: Add 'needs-review' label if not already added
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const prNumber = context.payload.pull_request.number;
-            const repoOwner = context.repo.owner;
-            const repoName = context.repo.repo;
-
-            // Add 'needs-review' label if it's not already added
-            const labels = await github.rest.issues.listLabelsOnIssue({
-              owner: repoOwner,
-              repo: repoName,
-              issue_number: prNumber,
-            });
-
-            const labelNames = labels.data.map(label => label.name);
-            if (!labelNames.includes('needs-review')) {
-              await github.rest.issues.addLabels({
-                owner: repoOwner,
-                repo: repoName,
-                issue_number: prNumber,
-                labels: ['needs-review'],
-              });
-            }
-
-  # Update labels based on review state
   update-labels:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
+
     steps:
       - name: Update label based on review state
         uses: actions/github-script@v7
@@ -54,37 +21,38 @@ jobs:
             const repoOwner = context.repo.owner;
             const repoName = context.repo.repo;
 
-            let addLabel = null;
-            let removeLabels = [];
+            // Define label logic based on the review state
+            const labelsToApply = {
+              approved: { add: 'approved', remove: ['changes-requested', 'needs-review'] },
+              changes_requested: { add: 'changes-requested', remove: ['approved', 'needs-review'] },
+              commented: { add: 'needs-review', remove: ['approved', 'changes-requested'] },
+              pending: { add: 'needs-review', remove: ['approved', 'changes-requested'] },
+              dismissed: { add: null, remove: ['approved', 'changes-requested', 'needs-review'] }
+            };
 
-            if (reviewState === 'approved') {
-              addLabel = 'approved';
-              removeLabels = ['changes-requested', 'needs-review'];
-            } else if (reviewState === 'changes_requested') {
-              addLabel = 'changes-requested';
-              removeLabels = ['approved', 'needs-review'];
-            } else {
-              return;
-            }
+            const labelAction = labelsToApply[reviewState];
+            if (!labelAction) return;
 
-            // Remove old labels
-            for (const label of removeLabels) {
-              try {
-                await github.rest.issues.removeLabel({
-                  owner: repoOwner,
-                  repo: repoName,
-                  issue_number: prNumber,
-                  name: label,
-                });
-              } catch (error) {
-                if (error.status !== 404) throw error; // Ignore if label doesn't exist
+            for (const label of labelAction.remove) {
+              if (label) {
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner: repoOwner,
+                    repo: repoName,
+                    issue_number: prNumber,
+                    name: label,
+                  });
+                } catch (error) {
+                  if (error.status !== 404) throw error;
+                }
               }
             }
 
-            // Add the new label
-            await github.rest.issues.addLabels({
-              owner: repoOwner,
-              repo: repoName,
-              issue_number: prNumber,
-              labels: [addLabel],
-            });
+            if (labelAction.add) {
+              await github.rest.issues.addLabels({
+                owner: repoOwner,
+                repo: repoName,
+                issue_number: prNumber,
+                labels: [labelAction.add],
+              });
+            }
