@@ -2,53 +2,38 @@ name: Trigger CodeRabbit Review
 
 on:
   pull_request:
-    types: [opened]  # Trigger only on PR opening
+    types: [opened]
 
 jobs:
   trigger-review:
     runs-on: ubuntu-latest
     permissions:
-      pull-requests: write  # Allows the bot to comment on PRs
+      pull-requests: write
 
     steps:
-      - name: Check PR description for @coderabbitai_ignore
+      - name: Post appropriate @coderabbitai comment
         uses: actions/github-script@v7
-        id: check_ignore
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const pr = context.payload.pull_request;
-            const prBody = pr.body.toLowerCase();  // PR body in lowercase to make the check case-insensitive
-            if (prBody.includes('@coderabbitai_ignore')) {
-              return 'true';  // Skip review if @coderabbitai_ignore exists
-            }
-            return 'false';  // Proceed with review
+            const prBody = pr.body ? pr.body.toLowerCase() : '';
+            const commentBody = prBody.includes('@coderabbitai_ignore')
+              ? '@coderabbitai ignore'
+              : '@coderabbitai review';
 
-      - name: Check if @coderabbitai review is already posted
-        uses: actions/github-script@v7
-        id: check_comment
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const pr = context.payload.pull_request;
             const comments = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: pr.number
             });
-            const reviewComment = comments.data.some(comment => comment.body.includes('@coderabbitai review'));
-            return reviewComment;
 
-      - name: Comment "@coderabbitai review" on PR
-        if: steps.check_ignore.outputs.result == 'false' && steps.check_comment.outputs.result == 'false'  # Only post comment if not ignored and not already posted
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const pr = context.payload.pull_request;
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: pr.number,
-              body: "@coderabbitai review"
-            });
+            const alreadyCommented = comments.data.some(comment => comment.body.includes(commentBody));
+            if (!alreadyCommented) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body: commentBody
+              });
+            }
