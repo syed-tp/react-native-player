@@ -43,6 +43,7 @@ function App(): React.JSX.Element {
 
   return (
       <View style={styles.container}>
+        <Text>Video Player</Text>
         <VideoPlayer
           ref={playerRef}
           endWithThumbnail
@@ -55,6 +56,7 @@ function App(): React.JSX.Element {
           onError={(e) => console.log(e)}
           showDuration={true}
         />
+        <Text>Video Player</Text>
       </View>
   );
 }
