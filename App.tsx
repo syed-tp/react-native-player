@@ -55,6 +55,7 @@ function App(): React.JSX.Element {
           onError={(e) => console.log(e)}
           showDuration={true}
         />
+        <Text>Video Player</Text>
       </View>
   );
 }
